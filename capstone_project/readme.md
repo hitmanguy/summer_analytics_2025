@@ -1,33 +1,87 @@
-# Real-Time Dynamic Pricing for Parking Lots
+# 📈 Real-Time Dynamic Pricing Engine for Urban Parking
 
-This project simulates a dynamic pricing engine for a system of 14 urban parking lots. It uses a real-time data streaming pipeline to adjust parking fees based on live demand and competitor pricing, and visualizes the results on a live dashboard.
 
-## Project Highlights
 
--   **Dynamic Pricing Model**: Prices are not static. They are calculated in real-time based on:
-    -   **Occupancy Rate**: How full the parking lot is.
-    -   **Queue Length**: How many cars are waiting to enter.
-    -   **Competitor Pricing**: The model identifies nearby competitors (within a 2km radius) and adjusts prices to stay competitive.
+*A live demonstration of the dashboard visualizing real-time price adjustments for all 14 parking lots.*
 
--   **Real-Time Simulation**: A historical dataset of parking information is replayed as a continuous live stream, mimicking a 24/7 operational environment.
+---
 
--   **Live Dashboard**: The final output is a "mission control" dashboard displaying **14 live-updating plots**—one for each parking lot. This allows for an immediate, system-wide view of how prices are changing across all locations.
+## 📋 Overview
 
-## Technologies Used
+This project implements a sophisticated, data-driven dynamic pricing engine for a system of 14 urban parking lots. Moving beyond inefficient static pricing, this solution leverages a real-time data streaming pipeline to adjust parking fees based on live demand, traffic, and a comprehensive analysis of competitor pricing.
 
--   **Python**
--   **Pathway**: For building the real-time data streaming pipeline.
--   **Pandas & NumPy**: For data handling and calculations.
--   **Panel & Bokeh**: For creating the live dashboard.
+The system ingests a continuous stream of parking data, applies an intelligent pricing algorithm, and visualizes the results on a "mission control" style dashboard, providing a complete, live overview of the entire parking network.
 
-## How to Run
+---
 
-This notebook is designed for Google Colab.
+## ✨ Key Features
 
-1.  **Upload `dataset.csv`** to your Colab environment.
-2.  **Run all cells** from top to bottom.
-    -   The first cell installs necessary packages.
-    -   The following cells preprocess the data, define the pricing logic, and set up the dashboard layout.
-3.  **Execute the final cell** containing `pw.run()` to start the live simulation.
-    -   The dashboard in the cell above it will activate, and all 14 plots will begin updating.
-    -   To stop the simulation, interrupt the kernel (click the stop button).
+-   🚗 **Real-Time Price Adjustments**: Prices are updated continuously based on a multi-factor model, not just on a fixed schedule.
+-   🗺️ **Competitive Location Intelligence**: The model uses geographic coordinates to identify nearby competitors (within a 2 km radius) and strategically adjusts prices to stay attractive and maximize revenue.
+-   📊 **Multi-Factor Demand Model**: Pricing isn't just about how full a lot is. The model calculates an "Internal Demand Score" by weighting both **Occupancy Rate (70%)** and **Queue Length (30%)**.
+-   🖥️ **Live "Mission Control" Dashboard**: A comprehensive dashboard built with Panel and Bokeh displays live-updating time-series plots for all 14 parking lots simultaneously, allowing for at-a-glance system monitoring.
+-   🔄 **Continuous Data Simulation**: The project uses Pathway to replay a historical dataset as a continuous, looping stream, perfectly simulating a 24/7 operational environment for robust testing and demonstration.
+
+---
+
+## 🛠️ Tech Stack
+
+-   **Backend & Data Processing**: 🐍 Python, 🌊 **Pathway** (for real-time data streaming)
+-   **Data Manipulation**: 🐼 Pandas, 🔢 NumPy
+-   **Visualization & Dashboarding**: 📊 **Panel**, 📈 Bokeh
+
+---
+
+## 🧠 How It Works: The Data Pipeline
+
+The project's core is a streaming pipeline built with Pathway. It processes data in logical, real-time steps.
+
+### 1. The Data Stream
+A clean, time-sorted CSV (`parking_stream_full.csv`) is ingested using `pw.io.csv.read` with `mode="streaming"`. This powerful feature tells Pathway to treat the finite CSV file as an unbounded, continuous source by looping over it, creating a perfect simulation of non-stop incoming data.
+
+### 2. Competitive Intelligence (Batch UDF)
+This is the most critical step. To make fair comparisons, all parking lot data for a specific timestamp is grouped together.
+-   **Haversine Formula**: The geographic distance between every pair of lots is calculated.
+-   **Competitor Identification**: Lots within a **2.0 km radius** are flagged as competitors.
+-   **Average Price Calculation**: The model computes the average base price of all identified competitors. This generates the `avg_competitor_price` for each lot, which is a key signal for our pricing strategy.
+
+### 3. Final Price Calculation (Row-wise UDF)
+With the competitive landscape established, the final price for each lot is determined:
+1.  **Calculate Internal Demand**: A weighted score is computed from `(0.7 * Occupancy Rate) + (0.3 * Queue Pressure)`.
+2.  **Apply Competitive Strategy**:
+    -   If a lot is very busy (>80% full) and more expensive than its neighbors, its price is slightly lowered to remain attractive.
+    -   If a lot is cheaper than its neighbors, its price is nudged up by 5% to capture more value.
+3.  **Enforce Price Boundaries**: The final price is clipped to stay within a reasonable range of **$5.00 to $20.00**, preventing extreme values.
+
+### 4. Live Visualization
+The final, enriched data stream (`final_prices_table`) is piped directly into a Panel dashboard.
+-   For each of the 14 lots, a dedicated plot is generated by filtering the main stream.
+-   Each plot displays two lines:
+    -   🔵 **My Final Price**: The dynamic price calculated by our model.
+    -   🔴 **Avg. Competitor Price**: The average price of nearby lots.
+-   This provides an immediate visual confirmation of how our pricing strategy reacts to both internal demand and external market pressures.
+
+---
+
+## 🚀 How to Run
+
+This project is designed to be run in a Google Colab environment.
+
+1.  **Clone the Repository (or download the files)** and upload the `dataset.csv` file to your Colab session's file system.
+
+2.  **Install Dependencies**: Run the first code cell in the notebook to install the necessary packages.
+    ```bash
+    !pip install pathway bokeh panel --quiet
+    ```
+
+3.  **Execute All Cells**: Run the notebook cells in order from top to bottom. This will:
+    -   Load and preprocess the data.
+    -   Define the pricing functions and the Pathway streaming graph.
+    -   Render the static layout of the 14-plot dashboard.
+
+4.  **Start the Simulation**: Execute the final code cell.
+    ```python
+    # This command starts the Pathway streaming engine.
+    pw.run()
+    ```
+    The dashboard in the cell above will activate, and you will see all 14 plots updating with live data. The simulation runs indefinitely until you manually **interrupt the kernel** (press the stop button in Colab). A `KeyboardInterrupt` error upon stopping is normal and expected.
